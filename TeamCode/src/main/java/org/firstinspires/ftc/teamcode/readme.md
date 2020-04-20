@@ -1,3 +1,29 @@
+###### HOW 2 MAKE OPMODE (kinda)
+
+Dear future coder of 8300 or coder of other team
+
+The majority of the work in this repo will take place in three classes
+*autoTemplate.java
+*PIDcontroller.java
+*RobotClass.java
+** more could follow soon
+
+These classes are meant to be building blocks to built custom opmodes
+One can easily create a new opmode using these new systems by extending autoTemplate and importing PIDcontroller
+This will make creating an opmode FAR easier as i've done the scary coding for you.
+All you have to do is use the methods I created in autoTemplate such as turnAngle and encoderDriveIMU (more to follow but this is what I have as I am writing this)
+
+From here you can add more servos, sensors, or motors to the RobotClass as the fact that your robot (Hopefully) has more than just a drivetrain by the time comp rolls around.
+
+You can then add new methods to the autoTemplate class that allow you to control these motors and stuff
+good luck
+
+-- Ben Caunt Team 8300 Captain and Programming lead as of 4/20/2020
+
+
+
+
+## v everything below this is just standard FTC stuff lol worry about above ^^^
 ## TeamCode Module
 
 Welcome!
