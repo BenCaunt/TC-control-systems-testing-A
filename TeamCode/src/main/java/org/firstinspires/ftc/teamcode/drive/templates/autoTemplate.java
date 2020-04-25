@@ -26,9 +26,19 @@ public class autoTemplate extends LinearOpMode {
 
     // PID coefficients for the PID controller
     // if using different motors than what comes default on the GoBilda Strafer as of 4/18/2020 this probably needs to be tuned
-    public static double driveKp = 0.0008;
-    public static double driveKi = 0;
-    public static double driveKd = 0;
+    private static double driveKp = 0.0008;
+    private static double driveKi = 0;
+    private static double driveKd = 0;
+    // PID constant for angle adjustment
+    private static double adjustKp = 0.1;
+    private static double adjustKi = 0.0;
+    private static double adjustKd = 0.01;
+    // error
+    double angleError = 0;
+    double I_angleError = 0;
+    double D_angleError = 0;
+    double previousAngleError = 0;
+
 
     public double angleKp = 0;
     public double angleKi = 0;
@@ -44,6 +54,7 @@ public class autoTemplate extends LinearOpMode {
     double I_errorR = 0;
     double D_errorR = 0;
     double previousErrorR = 0;
+
 
     // this is the length of each iteration of the PID loop, in this case, 50 milliseconds
     public long driveLoopIterationTime = 10;
@@ -75,12 +86,16 @@ public class autoTemplate extends LinearOpMode {
 
      */
     public void encoderDriveIMU(double inches) {
-        // current angle of the robot on start of method call
-        float startHeading = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
 
+        // current angle of the robot on start of method call
+        double startHeading = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
+        // angle that gets updated through the loop
+        double robotAngle = 0;
         double speedL = 0;
         double speedR = 0;
-
+        double speedAdjust = 0;
+        // the value subtracted from the motor speed changes over time to create a speed ramp
+        double ramp = 1;
 
         int newLeftBackTarget;
         int newRightBackTarget;
@@ -127,6 +142,20 @@ public class autoTemplate extends LinearOpMode {
             // onto the next step, use (isBusy() || isBusy()) in the loop test.
             while (opModeIsActive() &&
                     (robot.BackRight.isBusy() && robot.BackLeft.isBusy() && robot.FrontRight.isBusy() && robot.FrontLeft.isBusy())) {
+                // drive loop duration
+                double loopStartTime = runtime.milliseconds();
+                // update robot angle
+                robotAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
+
+                // recalculate angle error
+                angleError = startHeading - robotAngle;
+                I_angleError = angleError * driveLoopIterationTime;
+                D_angleError = ((angleError - previousAngleError) / driveLoopIterationTime);
+                previousAngleError = angleError;
+                // use pid to calculate the motor power adjustments
+                speedAdjust = MotorPowerClip((angleError * adjustKp) + (I_angleError * adjustKi) + (D_angleError * adjustKd));
+
+
                 /*
                 *
                 * PID FOR LEFT MOTORS
@@ -137,26 +166,35 @@ public class autoTemplate extends LinearOpMode {
                 I_errorL = (errorL * driveLoopIterationTime);
                 D_errorL = ((errorL-previousErrorL)/driveLoopIterationTime);
                 previousErrorL = errorL;
-                speedL = (errorL * driveKp) + (I_errorL * driveKi) + (D_errorL * driveKd);
+                speedL = MotorPowerClip(((errorL * driveKp) + (I_errorL * driveKi) + (D_errorL * driveKd))) - speedAdjust;
                 /*
                 *
                 *  PID FOR RIGHT MOTORS
                 *
                  */
                 errorR = ((newRightBackTarget + newRightFrontTarget)/2) - (robot.BackRight.getCurrentPosition()+robot.FrontRight.getCurrentPosition())/2;
-                I_errorR = (errorR * time);
+                I_errorR = (errorR * driveLoopIterationTime);
                 D_errorL = ((errorR-previousErrorR)/driveLoopIterationTime);
                 previousErrorR = errorR;
-                speedR = (errorR * driveKp) + (I_errorR * driveKi) + (D_errorR * driveKd);
+                speedR = MotorPowerClip(((errorR * driveKp) + (I_errorR * driveKi) + (D_errorR * driveKd))) + speedAdjust;
+
+                // we then clip the ramp value
+                ramp = MotorPowerClip(ramp);
+
+                // in order to smooth the robots movement we need to introduce ramping to the motors power
+                // we calculate the new speed by taking the absolute speed and subtracting the ramp amount from it
+                speedL = Math.abs(MotorPowerClip(speedL) - ramp);
+                speedR = Math.abs(MotorPowerClip(speedR) - ramp);
 
 
-                // Save gyro's yaw angle
-                robot.Yaw_Angle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
-                // Report yaw orientation to Driver Station.
-                telemetry.addData("Yaw angle", robot.Yaw_Angle);
-                // the speed is the output of the PID controller of the average target and the average current position
+                // decrement the clip value so it like ramps
+                ramp -= 0.09;
+
+
                 // amount the motor speed is reduced by to counteract change in angle
+                /*
                 double adjustAmount = 0.5;
+
 
                 if (robot.Yaw_Angle < startHeading - 5) {
                     // Turn left by letting right slightly overpower
@@ -177,10 +215,17 @@ public class autoTemplate extends LinearOpMode {
                     robot.FrontLeft.setPower(Math.abs(speedL));
                     robot.FrontRight.setPower(Math.abs(speedR));
                 }
-
-
+                */
+                // UPDATE MOTOR POWER
+                robot.BackRight.setPower(Math.abs(speedR));
+                robot.BackLeft.setPower(Math.abs(speedL));
+                robot.FrontLeft.setPower(Math.abs(speedL));
+                robot.FrontRight.setPower(Math.abs(speedR));
                 // wait for the PID loop
-                sleep(driveLoopIterationTime);
+                while ((runtime.milliseconds() < loopStartTime + driveLoopIterationTime) && opModeIsActive()) {
+
+                }
+                /*
                 // Display it for the driver.
                 telemetry.addData("Path1",  "Running to %7d :%7d", newLeftBackTarget,  newRightBackTarget);
                 telemetry.addData("Path2",  "Running at %7d :%7d",
@@ -190,6 +235,12 @@ public class autoTemplate extends LinearOpMode {
                 telemetry.addData("right power", speedR);
                 telemetry.addData("left error: ",errorL);
                 telemetry.addData("right error: ",errorR);
+                telemetry.update();
+
+                 */
+                telemetry.addData("Angle Error: ", angleError);
+                telemetry.addData("Current angle",robotAngle);
+                telemetry.addData("Start angle",startHeading);
                 telemetry.update();
             }
 
@@ -215,7 +266,7 @@ public class autoTemplate extends LinearOpMode {
         while ((error > targetThresh || error < -targetThresh) && opModeIsActive()) {
             robot.BackLeft.setPower(-error * turnKp);
             robot.BackRight.setPower(error * turnKp);
-            robot.FrontLeft.setPower(-error* turnKp);
+            robot.FrontLeft.setPower(-error * turnKp);
             robot.FrontRight.setPower(error * turnKp);
             robotAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
             error = angle - robotAngle;
@@ -234,6 +285,17 @@ public class autoTemplate extends LinearOpMode {
         robot.BackLeft.setPower(0);
         robot.FrontLeft.setPower(0);
         robot.FrontRight.setPower(0);
+    }
+
+    // takes in a motor power and clips it between 0 and 1 for RUN_USING_ENCODER
+    public double MotorPowerClip(double power) {
+        if (power < 0) {
+            return 0;
+        } else if (power > 1) {
+            return 1;
+        } else {
+            return power;
+        }
     }
 
 }

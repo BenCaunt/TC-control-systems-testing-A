@@ -7,13 +7,13 @@ import org.firstinspires.ftc.teamcode.drive.templates.autoTemplate;
 @Config
 @Autonomous
 public class test extends autoTemplate {
-    final double inches = -17;
+    final double inches = 48;
     @Override
     public void runOpMode() {
         SetUp();
         telemetry.addData("Ready: ","yes");
         telemetry.update();
         waitForStart();
-        turnAngle(90);
+        encoderDriveIMU(inches);
     }
 }
