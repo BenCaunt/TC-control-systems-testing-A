@@ -69,6 +69,9 @@ public class autoTemplate extends LinearOpMode {
     RobotClass robot = new RobotClass();
     // instance of our PID controller for our Drivebase
 
+    /**
+     * Method is called in runOpMode() before waitForStart() to setup all the motor and robot stuff
+     */
     public void SetUp() {
         robot.init(hardwareMap);
         robot.BackLeft.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -87,10 +90,10 @@ public class autoTemplate extends LinearOpMode {
         waitForStart();
 
     }
-    /*
-    * function drives left and right motor to desired number of ticks
-    * @param leftTicks is the amount of ticks the DT will move
 
+    /**
+     * Drive the robot a specific number of inches using encoders, imu, and a little PID magic
+     * @param inches is the number of inches the robot should drive
      */
     public void encoderDriveIMU(double inches) {
 
@@ -233,7 +236,10 @@ public class autoTemplate extends LinearOpMode {
     }
 
 
-    // method turns TO a specified angle
+    /**
+     * Turn TO a specific angle
+     * @param angle is te angle that the robot shall turn towards
+     */
     public void turnToAngle(double angle) {
         // update global angle to this new angle
         GLOBALANGLE = angle;
@@ -259,7 +265,9 @@ public class autoTemplate extends LinearOpMode {
 
     }
 
-    // method stops drive train motors
+    /**
+     * Stops the DriveTrain
+     */
     public void STOPDT() {
         robot.BackRight.setPower(0);
         robot.BackLeft.setPower(0);
@@ -268,7 +276,11 @@ public class autoTemplate extends LinearOpMode {
     }
 
 
-    // takes in a motor power and clips it between 0 and 1 for RUN_USING_ENCODER
+    /**
+     * Takes in a motor power for RUN_TO_POSITION and clips it between 0 and 1
+     * @param power is the motor power to be clipped
+     * @return is the clipped value of the motor power
+     */
     public double MotorPowerClip(double power) {
         if (power < 0) {
             return 0;
