@@ -9,9 +9,10 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
-import org.firstinspires.ftc.teamcode.drive.robotClasses.PIDcontroller;
 import org.firstinspires.ftc.teamcode.drive.robotClasses.RobotClass;
 
+
+// TODO: implement thing where we have a global angle and are constantly trying to turn to that ange
 @Config
 @Autonomous
 public class autoTemplate extends LinearOpMode {
@@ -24,6 +25,12 @@ public class autoTemplate extends LinearOpMode {
     final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
             (WHEEL_DIAMETER_INCHES * Math.PI);
 
+
+    /**
+     *  GLOBALANGLE is important as it is constantly being updated throughout the OpMode.  The robot does its best to always be facing this angle
+     *  This angle can infact be changed
+     */
+    double GLOBALANGLE = 0;
     // PID coefficients for the PID controller
     // if using different motors than what comes default on the GoBilda Strafer as of 4/18/2020 this probably needs to be tuned
     private static double driveKp = 0.0008;
@@ -87,8 +94,6 @@ public class autoTemplate extends LinearOpMode {
      */
     public void encoderDriveIMU(double inches) {
 
-        // current angle of the robot on start of method call
-        double startHeading = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
         // angle that gets updated through the loop
         double robotAngle = 0;
         double speedL = 0;
@@ -148,7 +153,7 @@ public class autoTemplate extends LinearOpMode {
                 robotAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
 
                 // recalculate angle error
-                angleError = startHeading - robotAngle;
+                angleError = GLOBALANGLE - robotAngle;
                 I_angleError = angleError * driveLoopIterationTime;
                 D_angleError = ((angleError - previousAngleError) / driveLoopIterationTime);
                 previousAngleError = angleError;
@@ -190,32 +195,6 @@ public class autoTemplate extends LinearOpMode {
                 // decrement the clip value so it like ramps
                 ramp -= 0.09;
 
-
-                // amount the motor speed is reduced by to counteract change in angle
-                /*
-                double adjustAmount = 0.5;
-
-
-                if (robot.Yaw_Angle < startHeading - 5) {
-                    // Turn left by letting right slightly overpower
-                    robot.BackRight.setPower(Math.abs(speedR));
-                    robot.BackLeft.setPower(Math.abs(speedL) - adjustAmount);
-                    robot.FrontLeft.setPower(Math.abs(speedL) - adjustAmount);
-                    robot.FrontRight.setPower(Math.abs(speedR));
-                } else if (robot.Yaw_Angle > startHeading + 5) {
-                    // Turn right by letting left slightly overpower
-                    robot.BackRight.setPower(Math.abs(speedR) - adjustAmount);
-                    robot.BackLeft.setPower(Math.abs(speedL));
-                    robot.FrontLeft.setPower(Math.abs(speedL));
-                    robot.FrontRight.setPower(Math.abs(speedR) - adjustAmount);
-                } else {
-                    // Continue straight
-                    robot.BackRight.setPower(Math.abs(speedR));
-                    robot.BackLeft.setPower(Math.abs(speedL));
-                    robot.FrontLeft.setPower(Math.abs(speedL));
-                    robot.FrontRight.setPower(Math.abs(speedR));
-                }
-                */
                 // UPDATE MOTOR POWER
                 robot.BackRight.setPower(Math.abs(speedR));
                 robot.BackLeft.setPower(Math.abs(speedL));
@@ -225,7 +204,7 @@ public class autoTemplate extends LinearOpMode {
                 while ((runtime.milliseconds() < loopStartTime + driveLoopIterationTime) && opModeIsActive()) {
 
                 }
-                /*
+
                 // Display it for the driver.
                 telemetry.addData("Path1",  "Running to %7d :%7d", newLeftBackTarget,  newRightBackTarget);
                 telemetry.addData("Path2",  "Running at %7d :%7d",
@@ -235,17 +214,14 @@ public class autoTemplate extends LinearOpMode {
                 telemetry.addData("right power", speedR);
                 telemetry.addData("left error: ",errorL);
                 telemetry.addData("right error: ",errorR);
-                telemetry.update();
 
-                 */
                 telemetry.addData("Angle Error: ", angleError);
                 telemetry.addData("Current angle",robotAngle);
-                telemetry.addData("Start angle",startHeading);
+                telemetry.addData("GLOBALANGLE: ",GLOBALANGLE);
                 telemetry.update();
             }
 
             // Stop all motion;
-
             STOPDT();
 
             // Turn off RUN_TO_POSITION
@@ -253,15 +229,17 @@ public class autoTemplate extends LinearOpMode {
             robot.BackLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             robot.FrontLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             robot.FrontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            //  sleep(250);   // optional pause after each move
         }
     }
 
-    public void turnAngle(double angle) {
+
+    // method turns TO a specified angle
+    public void turnToAngle(double angle) {
+        // update global angle to this new angle
+        GLOBALANGLE = angle;
 
         double robotAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
-
-        double error = angle - robotAngle;
+        double error = GLOBALANGLE - robotAngle;
         double targetThresh = 0.8;
         while ((error > targetThresh || error < -targetThresh) && opModeIsActive()) {
             robot.BackLeft.setPower(-error * turnKp);
@@ -280,12 +258,15 @@ public class autoTemplate extends LinearOpMode {
         STOPDT();
 
     }
+
+    // method stops drive train motors
     public void STOPDT() {
         robot.BackRight.setPower(0);
         robot.BackLeft.setPower(0);
         robot.FrontLeft.setPower(0);
         robot.FrontRight.setPower(0);
     }
+
 
     // takes in a motor power and clips it between 0 and 1 for RUN_USING_ENCODER
     public double MotorPowerClip(double power) {
