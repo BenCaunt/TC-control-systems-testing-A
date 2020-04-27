@@ -30,16 +30,16 @@ public class autoTemplate extends LinearOpMode {
      *  GLOBALANGLE is important as it is constantly being updated throughout the OpMode.  The robot does its best to always be facing this angle
      *  This angle can infact be changed
      */
-    double GLOBALANGLE = 0;
+    public double GLOBALANGLE = 0;
     // PID coefficients for the PID controller
     // if using different motors than what comes default on the GoBilda Strafer as of 4/18/2020 this probably needs to be tuned
     private static double driveKp = 0.0008;
-    private static double driveKi = 0;
+    private static double driveKi = 0.0001;
     private static double driveKd = 0;
     // PID constant for angle adjustment
-    private static double adjustKp = 0.1;
+    private static double adjustKp = 0;
     private static double adjustKi = 0.0;
-    private static double adjustKd = 0.01;
+    private static double adjustKd = 0.00;
     // error
     double angleError = 0;
     double I_angleError = 0;
@@ -47,10 +47,15 @@ public class autoTemplate extends LinearOpMode {
     double previousAngleError = 0;
 
 
-    public double angleKp = 0;
-    public double angleKi = 0;
-    public double angleKd = 0;
-    public static double turnKp = 0.001;
+
+    public static double turnKp = 0.017;
+    public static double turnKi = 0.0;
+    public static double turnKd = 0;
+    double turnError = 0;
+    double I_turnError = 0;
+    double D_turnError = 0;
+    double previousTurnError = 0;
+
 
     double errorL = 0;
     double I_errorL = 0;
@@ -98,6 +103,7 @@ public class autoTemplate extends LinearOpMode {
     public void encoderDriveIMU(double inches) {
 
         // angle that gets updated through the loop
+        double startAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
         double robotAngle = 0;
         double speedL = 0;
         double speedR = 0;
@@ -156,12 +162,12 @@ public class autoTemplate extends LinearOpMode {
                 robotAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
 
                 // recalculate angle error
-                angleError = GLOBALANGLE - robotAngle;
+                angleError = startAngle - robotAngle;
                 I_angleError = angleError * driveLoopIterationTime;
                 D_angleError = ((angleError - previousAngleError) / driveLoopIterationTime);
                 previousAngleError = angleError;
                 // use pid to calculate the motor power adjustments
-                speedAdjust = MotorPowerClip((angleError * adjustKp) + (I_angleError * adjustKi) + (D_angleError * adjustKd));
+                speedAdjust = ((angleError * adjustKp) + (I_angleError * adjustKi) + (D_angleError * adjustKd));
 
 
                 /*
@@ -174,7 +180,7 @@ public class autoTemplate extends LinearOpMode {
                 I_errorL = (errorL * driveLoopIterationTime);
                 D_errorL = ((errorL-previousErrorL)/driveLoopIterationTime);
                 previousErrorL = errorL;
-                speedL = MotorPowerClip(((errorL * driveKp) + (I_errorL * driveKi) + (D_errorL * driveKd))) - speedAdjust;
+                speedL = MotorPowerClipExtended(((errorL * driveKp) + (I_errorL * driveKi) + (D_errorL * driveKd))) - speedAdjust;
                 /*
                 *
                 *  PID FOR RIGHT MOTORS
@@ -184,19 +190,22 @@ public class autoTemplate extends LinearOpMode {
                 I_errorR = (errorR * driveLoopIterationTime);
                 D_errorL = ((errorR-previousErrorR)/driveLoopIterationTime);
                 previousErrorR = errorR;
-                speedR = MotorPowerClip(((errorR * driveKp) + (I_errorR * driveKi) + (D_errorR * driveKd))) + speedAdjust;
+                speedR = MotorPowerClipExtended(((errorR * driveKp) + (I_errorR * driveKi) + (D_errorR * driveKd))) + speedAdjust;
 
                 // we then clip the ramp value
                 ramp = MotorPowerClip(ramp);
 
                 // in order to smooth the robots movement we need to introduce ramping to the motors power
                 // we calculate the new speed by taking the absolute speed and subtracting the ramp amount from it
-                speedL = Math.abs(MotorPowerClip(speedL) - ramp);
-                speedR = Math.abs(MotorPowerClip(speedR) - ramp);
+                speedL = Math.abs(MotorPowerClipExtended(speedL) - ramp);
+                speedR = Math.abs(MotorPowerClipExtended(speedR) - ramp);
 
 
                 // decrement the clip value so it like ramps
                 ramp -= 0.09;
+                if (ramp < 0) {
+                    ramp = 0;
+                }
 
                 // UPDATE MOTOR POWER
                 robot.BackRight.setPower(Math.abs(speedR));
@@ -222,6 +231,7 @@ public class autoTemplate extends LinearOpMode {
                 telemetry.addData("Current angle",robotAngle);
                 telemetry.addData("GLOBALANGLE: ",GLOBALANGLE);
                 telemetry.update();
+
             }
 
             // Stop all motion;
@@ -232,6 +242,7 @@ public class autoTemplate extends LinearOpMode {
             robot.BackLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             robot.FrontLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             robot.FrontRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
         }
     }
 
@@ -241,24 +252,64 @@ public class autoTemplate extends LinearOpMode {
      * @param angle is te angle that the robot shall turn towards
      */
     public void turnToAngle(double angle) {
+        // init start time
+        double loopStartTime = runtime.milliseconds();
         // update global angle to this new angle
         GLOBALANGLE = angle;
-
+        /**
+         * SUPER JANKY MATH ALERT (WHOO!)
+         * So basically kids this weird set of if statements forces the angle in between 180 and -180
+         * because thats what the IMU likes
+         * I think
+         * I hate everything
+         * Ben Caunt - 4/27/2020 at 2:25 EST while fighting through the COVID-19 Pandemic
+         * If any future members of 8300 or whatever team I end up on sees this please let me know lol
+         * my insta should still be @BenCaunt1232 lol
+         * so yeah, HMU if you see this
+         * Then again ill  be 18+ so that may be kinda sus
+         */
+        if (GLOBALANGLE > 180) {
+            GLOBALANGLE = 180 - GLOBALANGLE;
+        } else if (GLOBALANGLE < -180) {
+            GLOBALANGLE = 360 - GLOBALANGLE;
+        }
+        double motorPower = 0;
         double robotAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
-        double error = GLOBALANGLE - robotAngle;
+        turnError = GLOBALANGLE - robotAngle;
+        previousTurnError = turnError;
         double targetThresh = 0.8;
-        while ((error > targetThresh || error < -targetThresh) && opModeIsActive()) {
-            robot.BackLeft.setPower(-error * turnKp);
-            robot.BackRight.setPower(error * turnKp);
-            robot.FrontLeft.setPower(-error * turnKp);
-            robot.FrontRight.setPower(error * turnKp);
-            robotAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
-            error = angle - robotAngle;
+        while ((turnError > targetThresh || turnError < -targetThresh) && opModeIsActive()) {
+            // time at the start of the loop
+            loopStartTime = runtime.milliseconds();
+            // calculate PID Error
+            turnError = GLOBALANGLE - robotAngle;
+            // calculate integral error
+            I_turnError = turnError * driveLoopIterationTime;
+            // Derivative error
+            D_turnError = ((turnError - previousAngleError) / driveLoopIterationTime);
+            // store previous error
+            previousTurnError = turnError;
+            // use pid to calculate the motor power adjustments
+            motorPower = (turnError * turnKp) + (I_turnError * turnKi) + (D_turnError * turnKd);
 
-            telemetry.addData("Turn Error: ",error);
+
+            robot.BackLeft.setPower(-motorPower);
+            robot.BackRight.setPower(motorPower);
+            robot.FrontLeft.setPower(-motorPower);
+            robot.FrontRight.setPower(motorPower);
+            robotAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
+
+
+            telemetry.addData("Turn Error: ",turnError);
             telemetry.addData("Angle",robotAngle);
-            telemetry.addData("Target",angle);
+            telemetry.addData("Target",GLOBALANGLE);
+            telemetry.addData("Power: ",motorPower);
             telemetry.update();
+
+            // wait until the PID time thing says so before looping
+            while (runtime.milliseconds() < loopStartTime + driveLoopIterationTime) {
+
+            }
 
         }
         STOPDT();
@@ -291,5 +342,19 @@ public class autoTemplate extends LinearOpMode {
         }
     }
 
+    /**
+     * Takes in a motor power for RUN_USING_ENCODERS and clips it between -1 and 1
+     * @param power
+     * @return
+     */
+    public double MotorPowerClipExtended(double power) {
+        if (power > 1) {
+            return 1;
+        } else if (power < -1) {
+            return -1;
+        } else {
+            return power;
+        }
+    }
 }
 
