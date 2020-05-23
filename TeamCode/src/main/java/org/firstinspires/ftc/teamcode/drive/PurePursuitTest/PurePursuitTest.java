@@ -2,10 +2,10 @@ package org.firstinspires.ftc.teamcode.drive.PurePursuitTest;
 
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import org.firstinspires.ftc.teamcode.PurePursuit.CurvePoint;
-import org.firstinspires.ftc.teamcode.PurePursuit.Robot.*;
 import org.firstinspires.ftc.teamcode.drive.mecanum.SampleMecanumDriveBase;
 import org.firstinspires.ftc.teamcode.drive.mecanum.SampleMecanumDriveREV;
 import org.opencv.core.Point;
@@ -14,21 +14,12 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 import static java.lang.Math.toDegrees;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.getGlobalRelativeAngleAlias;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.globalAbsoluteAngleAlias;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.movement_turn;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.movement_x;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.movement_y;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.posTurnToTarget;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.worldAngle_rad;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.worldDistanceToTarget;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.worldXPosition;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.worldYPosition;
+import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.*;
 import static org.firstinspires.ftc.teamcode.PurePursuit.RobotMovement.followCurve;
 import static org.firstinspires.ftc.teamcode.PurePursuit.RobotMovement.gotToPosition;
 
 
-@Autonomous
+@Disabled
 public class PurePursuitTest extends OpMode {
 
     final double DISTANCE_THRESHOLD = 5;

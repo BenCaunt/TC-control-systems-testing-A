@@ -8,16 +8,7 @@ import java.util.ArrayList;
 
 import static org.firstinspires.ftc.teamcode.PurePursuit.MathFunctions.AngleWrap;
 import static org.firstinspires.ftc.teamcode.PurePursuit.MathFunctions.lineCircleIntersection;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.globalAbsoluteAngleAlias;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.getGlobalRelativeAngleAlias;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.movement_turn;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.movement_x;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.movement_y;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.posTurnToTarget;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.worldAngle_rad;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.worldDistanceToTarget;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.worldXPosition;
-import static org.firstinspires.ftc.teamcode.PurePursuit.Robot.worldYPosition;
+import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.*;
 
 public class RobotMovement {
 
@@ -74,9 +65,12 @@ public class RobotMovement {
         worldDistanceToTarget = distanceToTarget;
         // calculate the angle to the target given the assumption the robot is at exactly 0 degrees
         double absoluteAngleToTarget = Math.atan2(y - worldYPosition, x - worldXPosition);
+        double absoluteAngleToStart = Math.atan2(startPath.y - worldYPosition, startPath.x - worldXPosition);
         globalAbsoluteAngleAlias = absoluteAngleToTarget;
         // calculate the true angle to the target
         double relativeAngleToPoint = AngleWrap(absoluteAngleToTarget - (worldAngle_rad - Math.toRadians(90)));
+        relativeAngleToStart = AngleWrap(absoluteAngleToStart - (worldAngle_rad - Math.toRadians(90)));
+
         double NormalrelativeAngleToPoint = AngleWrap(absoluteAngleToTarget - ((worldAngle_rad + Math.toRadians(270)) - Math.toRadians(90)));
 
         // distance traveled on the x axis
@@ -94,10 +88,11 @@ public class RobotMovement {
 
 
         double relativeTurnAngle = relativeAngleToPoint - Math.toRadians(180) + preferredAngle;
-        getGlobalRelativeAngleAlias = relativeTurnAngle;
-        movement_turn = Range.clip(worldAngle_rad - relativeTurnAngle,-1,1) * turnSpeed;//Range.clip(relativeTurnAngle/Math.toRadians(30),-1,1) * turnSpeed;
+        double relativeTurnAngleStart = relativeAngleToStart + preferredAngle;
+        getGlobalRelativeAngleAlias = relativeTurnAngleStart;
+        movement_turn = Range.clip(worldAngle_rad - relativeAngleToStart,-1,1) * turnSpeed;//Range.clip(relativeTurnAngle/Math.toRadians(30),-1,1) * turnSpeed;
         // reverse movement_turn if necessary.
-        if (posTurnToTarget) {
+        if (false) {
 
         } else {
             movement_turn = -movement_turn;
