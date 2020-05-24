@@ -25,6 +25,10 @@ public class PurePursuitGlobals {
     // minimum distance before switching to next point
     public static double DISTANCE_THRESHOLD = 2;
 
+    // angle from an AngledPoint that the robot needs to face as commanded by an AngledPoint
+    public static double targetAngle = 0;
+    // ANGLE STRAIGHT FROM IMU, NOT ROADRUNNER
+    public static double robotRawAngle = 0;
     // as part of our algorithm, we need to remember the start point between each path.
     public static Point startPath = new Point(0,0);
 

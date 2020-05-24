@@ -2,10 +2,14 @@ package org.firstinspires.ftc.teamcode.PurePursuit;
 
 import com.qualcomm.robotcore.util.Range;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.opencv.core.Point;
 
 import java.util.ArrayList;
 
+import static java.lang.Math.toRadians;
 import static org.firstinspires.ftc.teamcode.PurePursuit.MathFunctions.AngleWrap;
 import static org.firstinspires.ftc.teamcode.PurePursuit.MathFunctions.lineCircleIntersection;
 import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.*;
@@ -68,10 +72,10 @@ public class RobotMovement {
         double absoluteAngleToStart = Math.atan2(startPath.y - worldYPosition, startPath.x - worldXPosition);
         globalAbsoluteAngleAlias = absoluteAngleToTarget;
         // calculate the true angle to the target
-        double relativeAngleToPoint = AngleWrap(absoluteAngleToTarget - (worldAngle_rad - Math.toRadians(90)));
-        relativeAngleToStart = AngleWrap(absoluteAngleToStart - (worldAngle_rad - Math.toRadians(90)));
+        double relativeAngleToPoint = AngleWrap(absoluteAngleToTarget - (worldAngle_rad - toRadians(90)));
+        relativeAngleToStart = AngleWrap(absoluteAngleToStart - (worldAngle_rad - toRadians(90)));
 
-        double NormalrelativeAngleToPoint = AngleWrap(absoluteAngleToTarget - ((worldAngle_rad + Math.toRadians(270)) - Math.toRadians(90)));
+        double NormalrelativeAngleToPoint = AngleWrap(absoluteAngleToTarget - ((worldAngle_rad + toRadians(270)) - toRadians(90)));
 
         // distance traveled on the x axis
         double relativeXToPoint = Math.cos(NormalrelativeAngleToPoint) * distanceToTarget;
@@ -87,12 +91,12 @@ public class RobotMovement {
         movement_y = movementYPower * movement_speed;
 
 
-        double relativeTurnAngle = relativeAngleToPoint - Math.toRadians(180) + preferredAngle;
         double relativeTurnAngleStart = relativeAngleToStart + preferredAngle;
         getGlobalRelativeAngleAlias = relativeTurnAngleStart;
-        movement_turn = Range.clip(worldAngle_rad - relativeAngleToStart,-1,1) * turnSpeed;//Range.clip(relativeTurnAngle/Math.toRadians(30),-1,1) * turnSpeed;
+
+        movement_turn = setTurnToAngleSpeed(targetAngle);//Range.clip((worldAngle_rad) - targetAngle,-1,1) * turnSpeed;//Range.clip(relativeTurnAngle/Math.toRadians(30),-1,1) * turnSpeed;
         // reverse movement_turn if necessary.
-        if (false) {
+        if (true) {
 
         } else {
             movement_turn = -movement_turn;
@@ -105,6 +109,33 @@ public class RobotMovement {
 
 
     }
+
+    public static double setTurnToAngleSpeed(double angle) {
+        // init start time
+        // update global angle to this new angle
+        /**
+         * SUPER JANKY MATH ALERT (WHOO!)
+         * So basically kids this weird set of if statements forces the angle in between 180 and -180
+         * because thats what the IMU likes
+         * I think
+         * I hate everything
+         * Ben Caunt - 4/27/2020 at 2:25 EST while fighting through the COVID-19 Pandemic
+         * If any future members of 8300 or whatever team I end up on sees this please let me know lol
+         * my insta should still be @BenCaunt1232 lol
+         * so yeah, HMU if you see this
+         * Then again ill  be 18+ so that may be kinda sus
+         */
+        if (angle > 180) {
+            angle = 180 - angle;
+        } else if (angle < -180) {
+            angle = 360 - angle;
+        }
+
+        return (angle - robotRawAngle) * 0.4;
+
+
+    }
+
 
 
 }

@@ -3,28 +3,23 @@ package org.firstinspires.ftc.teamcode.drive.PurePursuitTest;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.util.Range;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.teamcode.PurePursuit.AngledPoint;
 import org.firstinspires.ftc.teamcode.PurePursuit.CurvePoint;
 import org.firstinspires.ftc.teamcode.drive.mecanum.SampleMecanumDriveBase;
 import org.firstinspires.ftc.teamcode.drive.mecanum.SampleMecanumDriveREV;
+import org.firstinspires.ftc.teamcode.drive.robotClasses.RobotClass;
 import org.opencv.core.Point;
 
 import java.util.ArrayList;
 
 import static java.lang.Math.toDegrees;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.DISTANCE_THRESHOLD;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.getGlobalRelativeAngleAlias;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.movement_turn;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.movement_x;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.movement_y;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.relativeAngleToStart;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.startPath;
-
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.posTurnToTarget;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.worldAngle_rad;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.worldDistanceToTarget;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.worldXPosition;
-import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.worldYPosition;
+import static java.lang.Math.toRadians;
+import static org.firstinspires.ftc.teamcode.PurePursuit.PurePursuitGlobals.*;
 import static org.firstinspires.ftc.teamcode.PurePursuit.RobotMovement.followCurve;
 
 @Autonomous
@@ -33,18 +28,22 @@ public class PurePursuitOpMode extends OpMode {
 
     // mecanum drivebase stolen from roadrunner
     private SampleMecanumDriveBase driveRR;
-    private opModeStates driveState = opModeStates.NEXTPOINT;
+    // Pi Rho Robot class
+    RobotClass robot = new RobotClass();
 
+    private opModeStates driveState = opModeStates.NEXTPOINT;
     private int CURRENT_POINT_INDEX = 0;
-    private ArrayList<Point> points = new ArrayList<>();
+    private ArrayList<AngledPoint> points = new ArrayList<>();
     @Override
     public void init() {
+        robot.init(hardwareMap);
         initRoadRunner();
-        points.add(new Point(0,0));
-        points.add(new Point(60,-10));
-        points.add(new Point(60,-60));
-        points.add(new Point(0,-60));
-        points.add(new Point(0,0));
+        points.add(new AngledPoint(0,0,toRadians(90)));
+        points.add(new AngledPoint(60,-10,toRadians(90)));
+        points.add(new AngledPoint(60,-60,toRadians(90)));
+        points.add(new AngledPoint(0,-60,toRadians(180)));
+        points.add(new AngledPoint(20,0,toRadians(90)));
+
 
     }
     @Override
@@ -65,7 +64,6 @@ public class PurePursuitOpMode extends OpMode {
 
         switch (driveState) {
             case FOLLOW_PATH:
-
                 posTurnToTarget = (!(points.get(CURRENT_POINT_INDEX).y < points.get(CURRENT_POINT_INDEX - 1).y)
                         || !(points.get(CURRENT_POINT_INDEX).x > points.get(CURRENT_POINT_INDEX - 1).x))
                         && (!(points.get(CURRENT_POINT_INDEX).y > points.get(CURRENT_POINT_INDEX - 1).y)
@@ -73,6 +71,7 @@ public class PurePursuitOpMode extends OpMode {
 
                 CurvePoint currentPoint = followCurve(allPoints, -Math.toRadians(180));
                 // if the distance to the point is less than the threshold then move to the nextPoint
+
                 if (worldDistanceToTarget < DISTANCE_THRESHOLD) {
                     driveState = opModeStates.NEXTPOINT;
                 }
@@ -86,9 +85,10 @@ public class PurePursuitOpMode extends OpMode {
             case NEXTPOINT:
                 // if there is another point available move to that point, if not then STOP the robot.
                 if (CURRENT_POINT_INDEX + 1 < points.size()) {
-                    CURRENT_POINT_INDEX += 1;
-                    startPath = new Point(points.get(points.size()-1).x,points.get(points.size()-1).y);
 
+                    CURRENT_POINT_INDEX += 1;
+                    startPath = new Point(points.get(CURRENT_POINT_INDEX).x,points.get(CURRENT_POINT_INDEX).y);
+                    targetAngle = points.get(CURRENT_POINT_INDEX).angle;
                     driveState = opModeStates.FOLLOW_PATH;
 
                 } else {
@@ -99,8 +99,7 @@ public class PurePursuitOpMode extends OpMode {
         }
 
         moveRobotPP();
-        telemetry.addData("relative turn",getGlobalRelativeAngleAlias);
-        telemetry.addData("Relative angle:",relativeAngleToStart);
+        telemetry.addData("targetAngle: ",targetAngle);
         outputTelemetry();
 
 
@@ -113,6 +112,7 @@ public class PurePursuitOpMode extends OpMode {
     public void initRoadRunner() {
         // init Mecanum drive base object so we can get position stuff
         driveRR = new SampleMecanumDriveREV(hardwareMap);
+        driveRR.setPoseEstimate(new Pose2d(0,0,0));
     }
 
     /**
@@ -127,6 +127,8 @@ public class PurePursuitOpMode extends OpMode {
         worldYPosition = driveRR.getPoseEstimate().getY();
         // peter likes things at 90 degrees lol
         worldAngle_rad = driveRR.getPoseEstimate().getHeading() - Math.toRadians(180);
+        // get robots raw IMU angle skipping roadruner
+        robotRawAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.RADIANS).thirdAngle;
     }
 
     /**
@@ -156,6 +158,8 @@ public class PurePursuitOpMode extends OpMode {
         telemetry.addData("Y Pose: ",worldYPosition);
         telemetry.addData("Heading: ",worldAngle_rad);
         telemetry.addData("Heading Degrees: ",toDegrees(worldAngle_rad));
+        telemetry.addData("RAW Heading: ",robotRawAngle);
+        telemetry.addData("Unadjusted Heading DEG: ",toDegrees(robotRawAngle));
         telemetry.update();
     }
 

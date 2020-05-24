@@ -253,7 +253,7 @@ public class autoTemplate extends LinearOpMode {
      */
     public void turnToAngle(double angle) {
         // init start time
-        double loopStartTime = runtime.milliseconds();
+        double loopStartTime;
         // update global angle to this new angle
         GLOBALANGLE = angle;
         /**
@@ -273,7 +273,7 @@ public class autoTemplate extends LinearOpMode {
         } else if (GLOBALANGLE < -180) {
             GLOBALANGLE = 360 - GLOBALANGLE;
         }
-        double motorPower = 0;
+        double motorPower;
         double robotAngle = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.XYZ, AngleUnit.DEGREES).thirdAngle;
         turnError = GLOBALANGLE - robotAngle;
         previousTurnError = turnError;
